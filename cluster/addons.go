@@ -25,6 +25,7 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -378,6 +379,14 @@ func (c *Cluster) deployKubeDNS(ctx context.Context, data map[string]interface{}
 
 func (c *Cluster) deployCoreDNS(ctx context.Context, data map[string]interface{}) error {
 	log.Infof(ctx, "[addons] Setting up %s", c.DNS.Provider)
+	rollingUpdate := c.DNS.UpdateStrategy.RollingUpdate
+	if rollingUpdate == nil {
+		coreDNSMaxUnavailable, coreDNSMaxSurge := intstr.FromInt(1), intstr.FromInt(0)
+		rollingUpdate = &appsv1.RollingUpdateDeployment{
+			MaxUnavailable: &coreDNSMaxUnavailable,
+			MaxSurge:       &coreDNSMaxSurge,
+		}
+	}
 	CoreDNSConfig := CoreDNSOptions{
 		CoreDNSImage:           c.SystemImages.CoreDNS,
 		CoreDNSAutoScalerImage: c.SystemImages.CoreDNSAutoscaler,
@@ -389,7 +398,7 @@ func (c *Cluster) deployCoreDNS(ctx context.Context, data map[string]interface{}
 		NodeSelector:           c.DNS.NodeSelector,
 		UpdateStrategy: &appsv1.DeploymentStrategy{
 			Type:          c.DNS.UpdateStrategy.Strategy,
-			RollingUpdate: c.DNS.UpdateStrategy.RollingUpdate,
+			RollingUpdate: rollingUpdate,
 		},
 		Tolerations:                        c.DNS.Tolerations,
 		CoreDNSPriorityClassName:           c.DNS.Options[CoreDNSPriorityClassNameKey],
