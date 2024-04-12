@@ -12,6 +12,7 @@ import (
 	"github.com/rancher/rke/pki"
 	"github.com/rancher/rke/pki/cert"
 	"github.com/rancher/rke/services"
+	"github.com/rancher/rke/util"
 )
 
 func SetUpAuthentication(ctx context.Context, kubeCluster, currentCluster *Cluster, fullState *FullState) error {
@@ -32,9 +33,7 @@ func GetClusterCertsFromKubernetes(ctx context.Context, kubeCluster *Cluster) (m
 	}
 	certificatesNames := []string{
 		pki.CACertName,
-		pki.EtcdCACertName,
 		pki.KubeAPICertName,
-		pki.KubeAPIEtcdClientCertName,
 		pki.KubeNodeCertName,
 		pki.KubeProxyCertName,
 		pki.KubeControllerCertName,
@@ -43,6 +42,15 @@ func GetClusterCertsFromKubernetes(ctx context.Context, kubeCluster *Cluster) (m
 		pki.APIProxyClientCertName,
 		pki.RequestHeaderCACertName,
 		pki.ServiceAccountTokenKeyName,
+	}
+
+	match, err := util.IsK8sVersion1290OrHigher(kubeCluster.Version)
+	if err != nil {
+		return nil, util.ErrorK8sVersion1290Check(kubeCluster.Version)
+	}
+
+	if match {
+		certificatesNames = append(certificatesNames, pki.EtcdCACertName, pki.KubeAPIEtcdClientCertName)
 	}
 
 	for _, etcdHost := range kubeCluster.EtcdHosts {
@@ -140,6 +148,18 @@ func RotateRKECertificates(ctx context.Context, c *Cluster, flags ExternalFlags,
 		if err := pki.GenerateRKECACerts(ctx, c.Certificates, flags.ClusterFilePath, flags.ConfigDir); err != nil {
 			return err
 		}
+
+		match, err := util.IsK8sVersion1290OrHigher(c.Version)
+		if err != nil {
+			return util.ErrorK8sVersion1290Check(c.Version)
+		}
+
+		if match {
+			if err := pki.GenerateRKEEtcdCACert(ctx, c.Certificates, flags.ClusterFilePath, flags.ConfigDir); err != nil {
+				return err
+			}
+		}
+
 		rotateFlags.Services = nil
 	}
 	for _, k8sComponent := range rotateFlags.Services {

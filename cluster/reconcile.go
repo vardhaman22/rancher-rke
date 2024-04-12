@@ -14,6 +14,7 @@ import (
 	"github.com/rancher/rke/pki/cert"
 	"github.com/rancher/rke/services"
 	v3 "github.com/rancher/rke/types"
+	"github.com/rancher/rke/util"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 )
@@ -172,8 +173,18 @@ func reconcileHost(ctx context.Context, toDeleteHost *hosts.Host, worker, etcd b
 func reconcileEtcd(ctx context.Context, currentCluster, kubeCluster *Cluster, kubeClient *kubernetes.Clientset, svcOptionData map[string]*v3.KubernetesServicesOptions) error {
 	etcdToDelete := hosts.GetToDeleteHosts(currentCluster.EtcdHosts, kubeCluster.EtcdHosts, kubeCluster.InactiveHosts, false)
 	etcdToAdd := hosts.GetToAddHosts(currentCluster.EtcdHosts, kubeCluster.EtcdHosts)
-	clientCert := cert.EncodeCertPEM(currentCluster.Certificates[pki.KubeAPIEtcdClientCertName].Certificate)
-	clientKey := cert.EncodePrivateKeyPEM(currentCluster.Certificates[pki.KubeAPIEtcdClientCertName].Key)
+	clientCert := cert.EncodeCertPEM(currentCluster.Certificates[pki.KubeNodeCertName].Certificate)
+	clientKey := cert.EncodePrivateKeyPEM(currentCluster.Certificates[pki.KubeNodeCertName].Key)
+
+	match, err := util.IsK8sVersion1290OrHigher(kubeCluster.Version)
+	if err != nil {
+		return util.ErrorK8sVersion1290Check(kubeCluster.Version)
+	}
+
+	if match {
+		clientCert = cert.EncodeCertPEM(currentCluster.Certificates[pki.KubeAPIEtcdClientCertName].Certificate)
+		clientKey = cert.EncodePrivateKeyPEM(currentCluster.Certificates[pki.KubeAPIEtcdClientCertName].Key)
+	}
 
 	// check if the whole etcd plane is replaced
 	if isEtcdPlaneReplaced(ctx, currentCluster, kubeCluster) {
@@ -327,21 +338,30 @@ func cleanControlNode(ctx context.Context, kubeCluster, currentCluster *Cluster,
 	return nil
 }
 
-// TODO: need to understand
 func restartComponentsWhenCertChanges(ctx context.Context, currentCluster, kubeCluster *Cluster) error {
+
+	match, err := util.IsK8sVersion1290OrHigher(kubeCluster.Version)
+	if err != nil {
+		return util.ErrorK8sVersion1290Check(kubeCluster.Version)
+	}
+
 	AllCertsMap := map[string]bool{
 		pki.KubeAPICertName:            false,
 		pki.RequestHeaderCACertName:    false,
 		pki.CACertName:                 false,
-		pki.EtcdCACertName:             false,
 		pki.ServiceAccountTokenKeyName: false,
-		pki.KubeAPIEtcdClientCertName:  false,
 		pki.APIProxyClientCertName:     false,
 		pki.KubeControllerCertName:     false,
 		pki.KubeSchedulerCertName:      false,
 		pki.KubeProxyCertName:          false,
 		pki.KubeNodeCertName:           false,
 	}
+
+	if match {
+		AllCertsMap[pki.EtcdCACertName] = false
+		AllCertsMap[pki.KubeAPIEtcdClientCertName] = false
+	}
+
 	checkCertificateChanges(ctx, currentCluster, kubeCluster, AllCertsMap)
 	// check Restart Function
 	allHosts := hosts.GetUniqueHostList(kubeCluster.EtcdHosts, kubeCluster.ControlPlaneHosts, kubeCluster.WorkerHosts)

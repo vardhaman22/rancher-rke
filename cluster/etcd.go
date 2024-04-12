@@ -73,6 +73,11 @@ func (c *Cluster) DeployRestoreCerts(ctx context.Context, clusterCerts map[strin
 	var errgrp errgroup.Group
 	hostsQueue := util.GetObjectQueue(c.EtcdHosts)
 
+	match, err := util.IsK8sVersion1290OrHigher(c.Version)
+	if err != nil {
+		return util.ErrorK8sVersion1290Check(c.Version)
+	}
+
 	for w := 0; w < WorkerThreads; w++ {
 		errgrp.Go(func() error {
 			var errList []error
@@ -80,8 +85,7 @@ func (c *Cluster) DeployRestoreCerts(ctx context.Context, clusterCerts map[strin
 			for host := range hostsQueue {
 				h := host.(*hosts.Host)
 
-				if _, ok := clusterCerts[pki.EtcdCACertName]; ok {
-					// etcd CA cert present
+				if match {
 					restoreCerts[pki.EtcdCACertName] = clusterCerts[pki.EtcdCACertName]
 					etcdNodeCert := pki.GetCrtNameForHost(h, pki.EtcdCertName)
 					restoreCerts[etcdNodeCert] = clusterCerts[etcdNodeCert]
