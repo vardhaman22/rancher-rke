@@ -182,8 +182,8 @@ func reconcileEtcd(ctx context.Context, currentCluster, kubeCluster *Cluster, ku
 	}
 
 	if match {
-		clientCert = cert.EncodeCertPEM(currentCluster.Certificates[pki.KubeAPIEtcdClientCertName].Certificate)
-		clientKey = cert.EncodePrivateKeyPEM(currentCluster.Certificates[pki.KubeAPIEtcdClientCertName].Key)
+		clientCert = cert.EncodeCertPEM(kubeCluster.Certificates[pki.KubeAPIEtcdClientCertName].Certificate)
+		clientKey = cert.EncodePrivateKeyPEM(kubeCluster.Certificates[pki.KubeAPIEtcdClientCertName].Key)
 	}
 
 	// check if the whole etcd plane is replaced
