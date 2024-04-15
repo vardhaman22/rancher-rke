@@ -19,6 +19,7 @@ import (
 	"github.com/rancher/rke/pki"
 	"github.com/rancher/rke/services"
 	v3 "github.com/rancher/rke/types"
+	"github.com/rancher/rke/util"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
@@ -342,11 +343,24 @@ func rebuildExistingState(ctx context.Context, kubeCluster *Cluster, oldState, n
 			return err
 		}
 	}
+
+	match, err := util.IsK8sVersion1290OrHigher(kubeCluster.Version)
+	if err != nil {
+		return util.ErrorK8sVersion1290Check(kubeCluster.Version)
+	}
+
+	if match && pkiCertBundle[pki.EtcdCACertName].Certificate == nil {
+		if err := pki.GenerateRKEEtcdCACert(ctx, pkiCertBundle, flags.ClusterFilePath, flags.ConfigDir); err != nil {
+			return err
+		}
+	}
+
+	// TODO: fix here
 	if err := pki.GenerateRKEServicesCerts(ctx, pkiCertBundle, *rkeConfig, flags.ClusterFilePath, flags.ConfigDir, false); err != nil {
 		return err
 	}
 	newState.DesiredState.CertificatesBundle = pkiCertBundle
-	err := updateEncryptionConfig(kubeCluster, oldState, newState)
+	err = updateEncryptionConfig(kubeCluster, oldState, newState)
 	return err
 }
 
