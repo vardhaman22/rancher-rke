@@ -231,8 +231,20 @@ func compareCerts(ctx context.Context, kubeCluster, currentCluster *Cluster) {
 	if currentCluster != nil {
 		for _, certName := range []string{
 			pki.KubeAPICertName,
-			pki.EtcdCertName,
+			pki.KubeAPIEtcdClientCertName,
 		} {
+			currentCert := currentCluster.Certificates[certName]
+			desiredCert := kubeCluster.Certificates[certName]
+			if desiredCert.CertificatePEM != currentCert.CertificatePEM {
+				log.Infof(ctx, "[certificates] %s certificate changed, force deploying certs", certName)
+				kubeCluster.ForceDeployCerts = true
+				return
+			}
+		}
+
+		// check if etcd cert is changed
+		for _, host := range kubeCluster.EtcdHosts {
+			certName := pki.GetCrtNameForHost(host, pki.EtcdCertName)
 			currentCert := currentCluster.Certificates[certName]
 			desiredCert := kubeCluster.Certificates[certName]
 			if desiredCert.CertificatePEM != currentCert.CertificatePEM {
