@@ -12,6 +12,7 @@ import (
 	"github.com/rancher/rke/log"
 	"github.com/rancher/rke/pki/cert"
 	v3 "github.com/rancher/rke/types"
+	"github.com/rancher/rke/util"
 	"github.com/sirupsen/logrus"
 )
 
@@ -352,9 +353,21 @@ func GenerateExternalEtcdCertificates(ctx context.Context, certs map[string]Cert
 func GenerateEtcdCertificates(ctx context.Context, certs map[string]CertificatePKI, rkeConfig v3.RancherKubernetesEngineConfig, configPath, configDir string, rotate bool) error {
 	caCrt := certs[CACertName].Certificate
 	caKey := certs[CACertName].Key
-	if caCrt == nil || caKey == nil {
-		return fmt.Errorf("CA Certificate or Key is empty")
+
+	match, err := util.IsK8sVersion1290OrHigher(rkeConfig.Version)
+	if err != nil {
+		return util.ErrorK8sVersion1290Check(rkeConfig.Version)
 	}
+
+	if match {
+		caCrt = certs[EtcdCACertName].Certificate
+		caKey = certs[EtcdCACertName].Key
+	}
+
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("CA Certificate or Key for etcd is empty")
+	}
+
 	kubernetesServiceIP, err := GetKubernetesServiceIP(rkeConfig.Services.KubeAPI.ServiceClusterIPRange)
 	if err != nil {
 		return fmt.Errorf("Failed to get Kubernetes Service IP: %v", err)
@@ -403,6 +416,23 @@ func GenerateEtcdCertificates(ctx context.Context, certs map[string]CertificateP
 			return err
 		}
 		certs[etcdName] = ToCertObject(etcdName, "", "", etcdCrt, etcdKey, nil)
+	}
+
+	if match {
+		// generate etcd client cert for kube api server
+
+		var clientCertKey *rsa.PrivateKey
+		if !rotate {
+			clientCertKey = certs[KubeAPIEtcdClientCertName].Key
+		}
+
+		logrus.Infof("[certificates] Generating %s certificate and key", KubeAPIEtcdClientCertName)
+
+		kubeAPIEtcdClientCert, kubeAPIEtcdClientKey, err := GenerateSignedCertAndKey(caCrt, caKey, false, KubeAPIEtcdClientCertName, &cert.AltNames{}, clientCertKey, nil)
+		if err != nil {
+			return err
+		}
+		certs[KubeAPIEtcdClientCertName] = ToCertObject(KubeAPIEtcdClientCertName, "", "", kubeAPIEtcdClientCert, kubeAPIEtcdClientKey, nil)
 	}
 	deleteUnusedCerts(ctx, certs, EtcdCertName, etcdHosts)
 	return nil
@@ -463,6 +493,7 @@ func GenerateRKECACerts(ctx context.Context, certs map[string]CertificatePKI, co
 	if err := GenerateRKEMasterCACert(ctx, certs, configPath, configDir); err != nil {
 		return err
 	}
+
 	return GenerateRKERequestHeaderCACert(ctx, certs, configPath, configDir)
 }
 
@@ -475,6 +506,18 @@ func GenerateRKEMasterCACert(ctx context.Context, certs map[string]CertificatePK
 		return err
 	}
 	certs[CACertName] = ToCertObject(CACertName, "", "", caCrt, caKey, nil)
+	return nil
+}
+
+func GenerateRKEEtcdCACert(ctx context.Context, certs map[string]CertificatePKI, configPath, configDir string) error {
+	// generate kubernetes CA certificate and key
+	logrus.Info("[certificates] Generating Etcd CA kubernetes certificates")
+
+	caCrt, caKey, err := GenerateCACertAndKey(EtcdCACertName, nil)
+	if err != nil {
+		return err
+	}
+	certs[EtcdCACertName] = ToCertObject(EtcdCACertName, "", "", caCrt, caKey, nil)
 	return nil
 }
 
@@ -609,7 +652,7 @@ func deleteUnusedCerts(ctx context.Context, certs map[string]CertificatePKI, cer
 	logrus.Tracef("Checking and deleting unused certificates with prefix [%s] for the following [%d] node(s): %s", certName, len(hostAddresses), strings.Join(hostAddresses, ","))
 	unusedCerts := make(map[string]bool)
 	for k := range certs {
-		if strings.HasPrefix(k, certName) {
+		if strings.HasPrefix(k, certName) && k != EtcdCACertName {
 			unusedCerts[k] = true
 		}
 	}
