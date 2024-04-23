@@ -359,15 +359,19 @@ func GenerateEtcdCertificates(ctx context.Context, certs map[string]CertificateP
 		return util.ErrorK8sVersion1290Check(rkeConfig.Version)
 	}
 
-	if match {
+	caCertUpdated := false
 
+	if (match && certs[EtcdCACertName].Certificate == nil) || (!match && certs[EtcdCACertName].Certificate != nil) {
+		caCertUpdated = true
+	}
+
+	if match {
 		if certs[EtcdCACertName].Certificate == nil {
 			err = GenerateRKEEtcdCACert(ctx, certs, configPath, configDir)
 			if err != nil {
 				return fmt.Errorf("Error generating Etcd CA Certificate and Key")
 			}
 		}
-
 		caCrt = certs[EtcdCACertName].Certificate
 		caKey = certs[EtcdCACertName].Key
 	}
@@ -395,7 +399,7 @@ func GenerateEtcdCertificates(ctx context.Context, certs map[string]CertificateP
 	sort.Strings(ips)
 	for _, host := range etcdHosts {
 		etcdName := GetCrtNameForHost(host, EtcdCertName)
-		if _, ok := certs[etcdName]; ok && certs[etcdName].CertificatePEM != "" && !rotate {
+		if _, ok := certs[etcdName]; ok && certs[etcdName].CertificatePEM != "" && !rotate && !caCertUpdated {
 			cert := certs[etcdName].Certificate
 			if cert != nil && len(dnsNames) == len(cert.DNSNames) && len(ips) == len(cert.IPAddresses) {
 				var (
@@ -415,7 +419,8 @@ func GenerateEtcdCertificates(ctx context.Context, certs map[string]CertificateP
 			}
 		}
 		var serviceKey *rsa.PrivateKey
-		if !rotate {
+		if !rotate && !caCertUpdated {
+			logrus.Infof("[certificates] Using same key for %s certifiacte", etcdName)
 			serviceKey = certs[etcdName].Key
 		}
 		logrus.Infof("[certificates] Generating %s certificate and key", etcdName)
@@ -445,6 +450,12 @@ func GenerateEtcdCertificates(ctx context.Context, certs map[string]CertificateP
 	}
 
 	deleteUnusedCerts(ctx, certs, EtcdCertName, etcdHosts)
+
+	// k8s version not >1.29 and etcdCA certificate present
+	if !match && certs[EtcdCACertName].Certificate != nil {
+		delete(certs, EtcdCACertName)
+	}
+
 	return nil
 }
 
