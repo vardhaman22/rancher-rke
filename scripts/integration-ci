@@ -4,4 +4,14 @@ set -e
 cd $(dirname $0)
 
 ./build
+
+echo "----------------------------------------------------"
+
+cat /etc/resolv.conf
+uname -a
+
+docker info
+docker pull hello-world
+
+
 ./integration
