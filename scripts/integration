@@ -18,7 +18,12 @@ function cleanup {
     echo ""
     echo_with_time "---- Clean Up RKE ----"
     for i in ./bin/cluster-*.yml; do
-        ./bin/rke remove --dind --force --config $i 2>&1 >/dev/null
+       # ./bin/rke remove --dind --force --config $i 2>&1 >/dev/null
+        while timeout -k 60 70 ./bin/rke remove --dind --force --config $i; [ $? = 124 ]
+          echo "-----------------------------------------------------------------------------------------"
+          sudo journalctl -r -n 50 --no-pager -u docker.service
+          do sleep 2  # Pause before retry
+        done
     done
     rm -f ./bin/*.rkestate ./bin/*.yml
 }

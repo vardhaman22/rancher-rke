@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	DINDImage           = "docker:20.10.23-dind"
+	DINDImage           = "docker:24.0.9-dind"
 	DINDContainerPrefix = "rke-dind"
 	DINDPlane           = "dind"
 	DINDNetwork         = "dind-network"

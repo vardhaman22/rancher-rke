@@ -3,5 +3,10 @@ set -e
 
 cd $(dirname $0)
 
+
+docker info
+cat /etc/docker/daemon.json
+
+
 ./build
 ./integration
