@@ -61,7 +61,7 @@ func StartUpDindContainer(ctx context.Context, dindAddress, dindNetwork, dindSto
 		}
 
 		input, err := os.ReadFile("/etc/resolv.conf")
-		fmt.Println(input, err)
+		fmt.Println(string(input), err)
 
 		imageCfg := &container.Config{
 			Image: DINDImage,
