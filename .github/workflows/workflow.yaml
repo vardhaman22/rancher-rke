@@ -69,9 +69,12 @@ jobs:
       - name: check resolv
         run: |
           cat /etc/resolv.conf
+      - name: build dependencies
+        run: |
+          dapper --build .
       - name: Run CI
         run: |
-          dapper --dns 8.8.8.8 integration-ci
+          ./scripts/integration-ci
 
   github-pre-release:
     permissions:
