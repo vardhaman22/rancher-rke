@@ -76,6 +76,8 @@ jobs:
           cat /etc/resolv.conf
       - name: Run CI
         run: |
+           echo "nameserver 8.8.8.8" | sudo tee -a /etc/resolv.conf
+           cat /etc/resolv.conf
            DAPPER_RUN_ARGS="--privileged -v /var/lib/docker -v /etc/resolv.conf:/etc:resolv.conf" dapper integration-ci
 
   github-pre-release:
