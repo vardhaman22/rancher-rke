@@ -56,20 +56,14 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    container: 
-      image: rancher/dapper:v0.6.0
-      options: --privileged
     if: github.event_name == 'pull_request'
     steps:
-      - name: check resolv.conf
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: install dapper
         run: |
-          cat /etc/resolv.conf
-          echo "nameserver 8.8.8.8 8.8.4.4" > /etc/resolv.conf
-          cat /etc/resolv.conf
-      - name: Force Install GIT latest
-        run: |
-          apk add git --update-cache
-          git --version
+          curl -sL https://releases.rancher.com/dapper/latest/dapper-$(uname -s)-$(uname -m) > /usr/local/bin/dapper
+          chmod +x /usr/local/bin/dapper
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Run CI
