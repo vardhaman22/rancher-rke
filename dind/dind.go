@@ -3,6 +3,7 @@ package dind
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -58,6 +59,10 @@ func StartUpDindContainer(ctx context.Context, dindAddress, dindNetwork, dindSto
 		} else {
 			binds = append(binds, "/etc/resolv.conf:/etc/resolv.conf")
 		}
+
+		input, err := os.ReadFile("/etc/resolv.conf")
+		fmt.Println(input, err)
+
 		imageCfg := &container.Config{
 			Image: DINDImage,
 			Entrypoint: []string{
