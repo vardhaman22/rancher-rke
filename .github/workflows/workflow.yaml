@@ -71,7 +71,7 @@ jobs:
           cat /etc/resolv.conf
       - name: Run CI
         run: |
-          dapper integration-ci
+          dapper --dns 8.8.8.8 integration-ci
 
   github-pre-release:
     permissions:
