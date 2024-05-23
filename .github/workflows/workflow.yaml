@@ -66,6 +66,9 @@ jobs:
           chmod +x /usr/local/bin/dapper
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: check resolv
+        run: |
+          cat /etc/resolv.conf
       - name: Run CI
         run: |
           dapper integration-ci

@@ -7,6 +7,7 @@ cd $(dirname $0)
 
 echo "----------------------------------------------------"
 
+ls -ltrh /etc/resolv.conf
 cat /etc/resolv.conf
 uname -a
 
