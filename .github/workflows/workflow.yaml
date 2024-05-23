@@ -58,9 +58,14 @@ jobs:
     timeout-minutes: 30
     container: 
       image: rancher/dapper:v0.6.0
-      options: --privileged --dns 8.8.8.8
+      options: --privileged
+      volumes:
+        - /etc/resolv.conf:/etc/resolv.conf
     if: github.event_name == 'pull_request'
     steps:
+      - name: check resolv.conf
+        run: |
+          cat /etc/resolv.conf
       - name: Force Install GIT latest
         run: |
           apk add git --update-cache
