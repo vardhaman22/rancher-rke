@@ -347,6 +347,10 @@ type KubeletService struct {
 	FailSwapOn bool `yaml:"fail_swap_on" json:"failSwapOn,omitempty"`
 	// Generate per node kubelet serving certificates created using kube-ca
 	GenerateServingCertificate bool `yaml:"generate_serving_certificate" json:"generateServingCertificate,omitempty"`
+	// Stream Server Address for cri-dockerd
+	StreamServerAddress string `yaml:"stream_server_address" json:"streamServerAddress,omitempty"`
+	// Stream Server Port for cri-dockerd
+	StreamServerPort string `yaml:"stream_server_port" json:"streamServerPort,omitempty"`
 }
 
 type KubeproxyService struct {
