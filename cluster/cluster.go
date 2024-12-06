@@ -694,7 +694,14 @@ func parseNodeDrainInput(clusterFile string, rkeConfig *v3.RancherKubernetesEngi
 
 	// add back user's value because ghodssyaml.Marshal drops the value due to the same field has different names in YAML tag and JSON tag
 	if val, ok := nodeDrainInputMap["delete_local_data"].(bool); ok {
-		nodeDrainInput.DeleteLocalData = val
+		logrus.Infof("received delete_local_data field**********************************************")
+		nodeDrainInput.DeleteEmptyDirData = val
+	}
+
+	// add back user's value because ghodssyaml.Marshal drops the value due to the same field has different names in YAML tag and JSON tag
+	if val, ok := nodeDrainInputMap["delete_emptydir_data"].(bool); ok {
+		logrus.Infof("********************************************received delete_emptydir_data field")
+		nodeDrainInput.DeleteEmptyDirData = val
 	}
 
 	if update {
