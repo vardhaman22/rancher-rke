@@ -53,6 +53,8 @@ func getDrainHelper(kubeClient *kubernetes.Clientset, upgradeStrategy v3.NodeUpg
 	if upgradeStrategy.DrainInput == nil || upgradeStrategy.DrainInput.IgnoreDaemonSets == nil || *upgradeStrategy.DrainInput.IgnoreDaemonSets {
 		ignoreDaemonSets = true
 	}
+	// TODO: remove after frontend is migrated
+	upgradeStrategy.DrainInput.DeleteEmptyDirData = upgradeStrategy.DrainInput.DeleteLocalData
 	drainHelper := drain.Helper{
 		Client:              kubeClient,
 		Force:               upgradeStrategy.DrainInput.Force,
