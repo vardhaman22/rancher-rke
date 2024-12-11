@@ -252,6 +252,7 @@ func RestoreEtcdSnapshot(
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 	log.Infof(ctx, "Finished restoring snapshot [%s] on all etcd hosts", snapshotName)
+	time.Sleep(5 * time.Minute)
 	return APIURL, caCrt, clientCert, clientKey, certs, err
 }
 
